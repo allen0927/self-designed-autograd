@@ -9,19 +9,20 @@ from ..lf import LossFunction
 
 # TYPES DECLARED IN THIS MODULE
 
+DELTA: float = 1e-12
+class CategoricalCrossEntropy(LossFunction):
 
-class BinaryCrossEntropy(LossFunction):
-
-    def forward(self: BinaryCrossEntropy,
+    def forward(self: CategoricalCrossEntropy,
                 Y_hat: np.ndarray,
                 Y_gt: np.ndarray) -> float:
         assert(Y_hat.shape == Y_gt.shape)
-        result = -1 / abs(Y_hat.shape[0]) * np.sum((Y_gt * np.log(Y_hat)) + (np.ones(Y_gt.shape) - Y_gt) * np.log(np.ones(Y_hat.shape) - Y_hat))
-        return result
+        log_y_hat = np.log(Y_hat + DELTA)
+        loss = -(1/Y_hat.shape[0]) * np.sum(Y_gt * log_y_hat)
+        return loss
 
-    def backward(self: BinaryCrossEntropy,
+    def backward(self: CategoricalCrossEntropy,
                  Y_hat: np.ndarray,
                  Y_gt: np.ndarray) -> np.ndarray:
         assert(Y_hat.shape == Y_gt.shape)
-        return (Y_hat - Y_gt) / (Y_hat * (1 - Y_hat) * abs(Y_hat.shape[0]))
-
+        dLoss_dY_hat = -(1/Y_hat.shape[0]) * (Y_gt / (Y_hat + DELTA))
+        return dLoss_dY_hat

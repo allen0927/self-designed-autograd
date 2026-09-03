@@ -9,24 +9,33 @@ from ..module import Module
 from ..param import Parameter
 
 
-# TYPES DECLARED IN THIS MODULE
-
-
 class ReLU(Module):
 
+    # the formula of sigmoid is 1/(1 + e^-x)
     def forward(self: ReLU,
                 X: np.ndarray) -> np.ndarray:
-        result = np.where(X > 0, X, 0)
-        return result
+        return np.clip(X, 0, None)
 
-    # also element-wise indepenent
+
+    # SINCE sigmoid is element-wise INDEPENDENT, this makes derivatives nice.
+    # lets say that X is a vector (x_1, x_2, ..., x_n)
+    # so sigmoid(x) is also a vector (y_1, y_2, ..., y_n)
+
+    # if I take the dsigmoid(x)/dx then im really computing a jacobian matrix:
+    #               y_1     y_2     ...     y_n
+    #      x_1  dy_1/dx_1 dy_2/dx_2       dy_n/dx_n
+    #      x_2
+    #      ...
+    #      x_n
+
+    # BECAUSE of element-wise independence, this jacobian is diagonal
+
+    # derivative of sigmoid is sigmoid(x)(1-sigmoid(x))
     def backward(self: ReLU,
                  X: np.ndarray,
                  dLoss_dModule: np.ndarray) -> np.ndarray:
-        Y = self.forward(X)
-        dY_dX = np.where(Y > 0, 1, 0)
-        dLoss_dX = dLoss_dModule * dY_dX
-        return dLoss_dX
+        return (X > 0) * dLoss_dModule
 
     def parameters(self: ReLU) -> List[Parameter]:
         return list()
+
