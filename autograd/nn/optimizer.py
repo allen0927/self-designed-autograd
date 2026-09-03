@@ -29,6 +29,7 @@ class Optimizer(ABC):
                 self.step_parameter(P)
 
     @abstractmethod
-    def step_parameter(self: Optimizer) -> None:
+    def step_parameter(self: Optimizer,
+                       P: Parameter) -> None:
         ...
 

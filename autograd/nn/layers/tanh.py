@@ -16,17 +16,17 @@ class Tanh(Module):
 
     def forward(self: Tanh,
                 X: np.ndarray) -> np.ndarray:
-        result = np.tanh(X)
-        return result
+        return np.tanh(X)
 
     # also element-wise indepenent
+    # derivative of tanh: (1- tanh(x)**2)
     def backward(self: Tanh,
                  X: np.ndarray,
                  dLoss_dModule: np.ndarray) -> np.ndarray:
-        Y = self.forward(X)
-        dY_dX = 1 - Y**2
-        dLoss_dX = dLoss_dModule * dY_dX
-        return dLoss_dX
+        Y_hat: np.ndarray = self.forward(X)
+        dModule_dX: np.ndarray = 1 - Y_hat**2
+        return dLoss_dModule * dModule_dX
 
     def parameters(self: Tanh) -> List[Parameter]:
         return list()
+

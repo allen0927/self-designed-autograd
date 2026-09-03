@@ -1,6 +1,5 @@
 # SYSTEM IMPORTS
 from __future__ import annotations
-from typing import List
 import numpy as np
 
 
@@ -9,7 +8,12 @@ from ..optimizer import Optimizer
 from ..param import Parameter
 
 
+# TYPES DECLARD IN THIS MODULE
+
 
 class SGDOptimizer(Optimizer):
-    def step_parameter(self: SGDOptimizer, P: Parameter) -> None:
-        P.val -= self.lr * P.grad
+
+    def step_parameter(self: SGDOptimizer,
+                       P: Parameter) -> None:
+        P.step(self.lr * P.grad)
+
