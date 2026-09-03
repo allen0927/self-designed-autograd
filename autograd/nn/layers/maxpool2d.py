@@ -13,66 +13,74 @@ class MaxPool2d(Module):
     def __init__(self: MaxPool2d,
                  pool_size: Tuple[int, int],
                  stride: int = 2) -> None:
-        self.pool_size = pool_size
+        self.pool_size: Tuple[int, int] = pool_size
         self.stride = stride
-        return
-
 
     def forward(self: MaxPool2d,
                 X: np.ndarray) -> np.ndarray:
-        #input batch should have shape (num examples, h, w, num channels)
-        #output batch should have shape (num examples, 
-        #                                 1 + (h - pool h) // stride, 
-        #                                 1 + (w - pool w)// stride, 
-        #                                 num channels)
-        N, H, W, C = X.shape
+        batch_dim, h, w, num_channels = X.shape
         pool_h, pool_w = self.pool_size
-        s = self.stride
 
-        out_h = 1 + (H - pool_h) // s
-        out_w = 1 + (W - pool_w) // s
-        Y = np.empty((N, out_h, out_w, C), dtype=X.dtype)
+        out_h: int = 1 + (h - pool_h) // self.stride
+        out_w: int = 1 + (w - pool_w) // self.stride
 
-        for oh in range(out_h):
-            h_start_idx = oh * s
-            h_end_idx   = h_start_idx + pool_h
-            for ow in range(out_w):
-                w_start_idx = ow * s
-                w_end_idx   = w_start_idx + pool_w
+        Y_hat: np.ndarray = np.zeros((batch_dim, out_h, out_w, num_channels))
+        for i in range(out_h):
+            for j in range(out_w):
+                h_start_idx: int = i * self.stride
+                h_end_idx: int = h_start_idx + pool_h
 
-                X_pool_all_channels = X[:, h_start_idx:h_end_idx, w_start_idx:w_end_idx, :]
+                w_start_idx: int = j * self.stride
+                w_end_idx: int = w_start_idx + pool_w
 
-                Y[:, oh, ow, :] = X_pool_all_channels.max(axis=(1, 2))
-        return Y
+                Y_hat[:, i, j, :] = np.max(X[:,h_start_idx:h_end_idx, w_start_idx:w_end_idx,:], axis=(1,2))
+        return Y_hat
 
-    # because our params are frozen we only need to compute and return dLoss_dX
+
+    # because we have learnable parameters here,
+    # we need to do 3 things:
+    #   1) compute dLoss_dW
+    #   2) compute dLoss_db
+    #   3) compute (and return) dLoss_dX
     def backward(self: MaxPool2d,
                  X: np.ndarray,
                  dLoss_dModule: np.ndarray) -> np.ndarray:
-        N, H, W, C = X.shape
-        ph, pw = self.pool_size
-        s = self.stride
-        # Output spatial dims (VALID pooling)
-        OH = 1 + (H - ph) // s
-        OW = 1 + (W - pw) // s
-        dX = np.zeros_like(X, dtype=dLoss_dModule.dtype)
-        for oh in range(OH):
-            h_start_idx = oh * s
-            h_end_idx   = h_start_idx + ph
-            for ow in range(OW):
-                w_start_idx = ow * s
-                w_end_idx   = w_start_idx + pw
+        dL_dX: np.ndarray = np.zeros_like(X)
 
-                X_pool = X[:, h_start_idx:h_end_idx, w_start_idx:w_end_idx, :]
+        num_batches, out_h, out_w, num_channels = dLoss_dModule.shape
+        pool_h, pool_w = self.pool_size
 
-                max_vals = X_pool.max(axis=(1, 2), keepdims=True)
+        for i in range(out_h):
+            for j in range(out_w):
+                h_start_idx: int = i * self.stride
+                h_end_idx: int = h_start_idx + pool_h
 
-                mask = (X_pool == max_vals)
+                w_start_idx: int = j * self.stride
+                w_end_idx: int = w_start_idx + pool_w
 
-                g = dLoss_dModule[:, oh:oh+1, ow:ow+1, :]
+                # get the patch we used to compute this output cell
+                X_patch: np.ndarray = X[:,h_start_idx:h_end_idx, w_start_idx:w_end_idx,:]
 
-                dX[:, h_start_idx:h_end_idx, w_start_idx:w_end_idx, :] += mask * g
-        return dX
+                # a binary mask which will index out which examples contributed to the max
+                # value recorded in the output
+                mask = np.zeros_like(X_patch)
+                _, h, w, _ = X_patch.shape
+
+                X_patch = X_patch.reshape(num_batches, h*w, num_channels)
+                batch_idx, channel_idx = np.indices([num_batches, num_channels])
+
+                # print("\t", i, j, f"{h_start_idx}->{h_end_idx}", f"{w_start_idx}->{w_end_idx}", X_patch)
+
+                mask.reshape(X_patch.shape)[batch_idx, np.argmax(X_patch, axis=1), channel_idx] = 1
+
+                # print(dL_dX[:, height_start_idx:height_end_idx,
+                #             width_start_idx:width_end_idx, :].shape,
+                #       mask.shape,
+                #       dLoss_dModule[:,i:i+1, j:j+1, :].shape)
+                # use the mask to distribute dLoss_dModule to the corresponding values of X
+                dL_dX[:, h_start_idx:h_end_idx, w_start_idx:w_end_idx,:] += dLoss_dModule[:,i:i+1, j:j+1, :] * mask
+
+        return dL_dX
 
     def parameters(self: MaxPool2d) -> List[Parameter]:
         return list()

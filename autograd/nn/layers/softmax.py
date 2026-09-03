@@ -11,6 +11,7 @@ from ..param import Parameter
 
 class Softmax(Module):
 
+    # our first constructor for an activation function!
     # technically we can introduce a stretch coefficient to our softmax
     # function. This is a coefficient we multiply our input vector by.
     # This value controls how "skewed" of a distribution softmax produces.
@@ -40,16 +41,12 @@ class Softmax(Module):
     # aka it doesn't change the value of the output.
     def forward(self: Softmax,
                 X: np.ndarray) -> np.ndarray:
-        is_1d = (X.ndim == 1)
-        X2 = X[np.newaxis, :] if is_1d else X
+        X = np.atleast_2d(X) * self.stretch
 
-        s = self.stretch
+        Y_hat: np.ndarray = np.exp(X - np.max(X, axis=-1, keepdims=True))
+        Y_hat /= np.sum(Y_hat, axis=-1, keepdims=True)
 
-        X_shift = X2 - np.max(X2, axis=1, keepdims=True)
-        Z = np.exp(s * X_shift)
-        probs = Z / np.sum(Z, axis=1, keepdims=True)
-
-        return probs[0] if is_1d else probs
+        return Y_hat
 
     # TODO:
     # this method computes the jacobean matrix for a single example.
@@ -66,9 +63,8 @@ class Softmax(Module):
     def jacobian_single_example(self: Softmax,
                                 x: np.ndarray, 
                                 y_hat: np.ndarray) -> np.ndarray:
-        # TODO: finish me!
-        J = self.stretch * (np.diag(y_hat) - np.outer(y_hat, y_hat))
-        return J
+        y_hat = y_hat.reshape(-1,1)
+        return self.stretch * (np.diagflat(y_hat) - y_hat.dot(y_hat.T))
 
 
     # this is done for you! This is because combining the

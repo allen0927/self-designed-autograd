@@ -13,35 +13,33 @@ from ..param import Parameter
 
 
 class Dense(Module):
-    def  __init__(self, in_dim: int, out_dim: int) -> None:
-        super().__init__()
-        self.W = Parameter(np.random.randn(in_dim, out_dim))
-        self.b = Parameter(np.random.randn(1, out_dim))
+    def __init__(self: Dense,
+                 in_dim: int,
+                 out_dim: int) -> None:
+        self.W: Parameter = Parameter(np.random.randn(in_dim, out_dim))
+        self.b: Parameter = Parameter(np.random.randn(1, out_dim))
 
+    # X has shape [num_examples, in_dim]
     def forward(self: Dense,
                 X: np.ndarray) -> np.ndarray:
-        result =  X @ self.W.val + self.b.val
-        return result
+        return np.dot(X, self.W.val) + self.b.val
 
-    # also element-wise indepenent
+    # because we have learnable parameters here,
+    # we need to do 3 things:
+    #   1) compute dLoss_dW
+    #   2) compute dLoss_db
+    #   3) compute (and return) dLoss_dX
     def backward(self: Dense,
                  X: np.ndarray,
                  dLoss_dModule: np.ndarray) -> np.ndarray:
-        dY_dW = np.zeros(self.W.val.shape)
-        dY_db = np.zeros(self.b.val.shape)
+        dModule_dW: np.ndarray = X.T
+        dModule_dX: np.ndarray = self.W.val.T
 
+        self.W.grad += np.dot(X.T, dLoss_dModule)
+        self.b.grad += np.sum(dLoss_dModule, axis=0, keepdims=True)
 
-        dY_dX = dLoss_dModule @ self.W.val.T
-        if not self.W.frozen:
-            dY_dW = X.T @ dLoss_dModule
-
-        if not self.b.frozen:
-            dY_db = np.sum(dLoss_dModule, axis=0, keepdims=True)
-
-        self.W.grad = self.W.grad + dY_dW
-        self.b.grad = self.b.grad + dY_db
-        return dY_dX
-
+        return np.dot(dLoss_dModule, dModule_dX)
 
     def parameters(self: Dense) -> List[Parameter]:
         return [self.W, self.b]
+

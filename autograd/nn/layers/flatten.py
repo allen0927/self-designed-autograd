@@ -10,21 +10,22 @@ from ..param import Parameter
 
 
 class Flatten(Module):
-    def __init__(self: Flatten,) -> None:
-        return
+    def __init__(self: Flatten) -> None:
+        ...
 
-    # X has shape [num_examples, in_dim]
     def forward(self: Flatten,
                 X: np.ndarray) -> np.ndarray:
-        falttened_X = np.reshape(X, (X.shape[0], -1))
-        return falttened_X
+        return X.ravel().reshape(X.shape[0], -1)
 
-    # because our params are frozen we only need to compute and return dLoss_dX
+    # because we have learnable parameters here,
+    # we need to do 3 things:
+    #   1) compute dLoss_dW
+    #   2) compute dLoss_db
+    #   3) compute (and return) dLoss_dX
     def backward(self: Flatten,
                  X: np.ndarray,
                  dLoss_dModule: np.ndarray) -> np.ndarray:
-        dLoss_dX = dLoss_dModule.reshape(X.shape)
-        return dLoss_dX
+        return dLoss_dModule.reshape(X.shape)
 
     def parameters(self: Flatten) -> List[Parameter]:
         return list()
